@@ -1,0 +1,13 @@
+flowchart TB
+    A["Receives User prompt"] --> B{"Are tools definitions available?"}
+    B <-- No --> C["Get MCP context payload"]
+    B -- Yes --> D["Send prompt and tools context to LLM"]
+    D --> E{"Is response a tool call?"}
+    E -- Yes --> F["Call tools and return observation"]
+    F --> D
+    E -- No --> G["Return final LLM response"]
+
+    classDef process fill:#dfe7fd,stroke:#7b8ab8,stroke-width:1px,color:#000
+    classDef decision fill:#fff3cd,stroke:#b1953d,stroke-width:1px,color:#000
+    class A,C,D,F,G process
+    class B,E decision
