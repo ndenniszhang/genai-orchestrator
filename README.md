@@ -11,40 +11,37 @@ The GenAI Orchestrator MVP is designed as a **monolithic Spring Boot application
 The diagram below illustrates the key components within the GenAI Orchestrator monolith and its interactions with external systems.
 
 ```mermaid
-flowchart TB
-    %% === Container Boundary for Monolith ===
-    subgraph monolith["Spring Boot Application"]
-        direction TB
-        api_controller["<i>component</i><br/>API Controller<br/>Receives user prompts"]
-        orchestrator["<i>component</i><br/>Agent Loop Orchestrator<br/>Manages the reasoning loop"]
-        mcp_assembler["<i>component</i><br/>MCP Assembler<br/>Builds structured MCP payload"]
-        llm_client["<i>component</i><br/>LLM Client<br/>Makes HTTP calls to external LLM API"]
-        tool_dispatcher["<i>component</i><br/>Tool Dispatcher<br/>Executes tool logic via device APIs"]
-        tool_registry["<i>store (In-Memory or DB)</i><br/>Tool Registry<br/>Provides definitions of available tools"]
-
-        class api_controller,orchestrator,mcp_assembler,llm_client,tool_dispatcher,tool_registry component
+graph TD
+    %% Backend Container Boundary
+    subgraph Agentic_AI_Backend["Agentic AI Backend"]
+        Agent_Controller["Rest Controller</br>Handles incoming user requests and initiates agent tasks."]
+        Agent_Orchestration_Service["Agent Orchestration Service (ReAct Loop)<br>Manages multi-step reasoning & tool-use workflow of the AI agent. Orchestrates LLM calls and tool executions."]
+        MCP_Client_Registry["MCP Client Registry<br>Discovers and manages multiple MCP Clients. Maps tool names to specific MCP Clients."]
+        MCP_Client_1["MCP Client<br>Communicates with a single MCP Server. Instantiated by the Registry."]
+        MCP_Client_2["MCP Client<br>Communicates with a single MCP Server. Instantiated by the Registry."]
+        Model_Client["Chat Client<br>Abstracts communication with the LLM. Formats prompts with history and tool definitions."]
+        Task_State_Repository["Task State Repository</br>(In-memory or Db)<br>Manages conversation and task state for each agent execution."]
     end
-    class monolith container
 
-    %% === External Systems ===
-    llm_api(["External LLM API<br/><i>System</i><br/>e.g., OpenAI, Google Gemini"])
-    device_apis(["External Device APIs<br/><i>Microservices</i><br/>e.g., IoT, Calendar APIs"])
-    class llm_api,device_apis system
+    %% External Systems
+    LLM["Large Language Model (LLM)<br>Ollama Container / OpenAI API<br>Provides reasoning capabilities, understands natural language, and suggests tool calls."]
+    MCP_Server_1["MCP Context Server 1<br>External Service<br>Exposes specific tools and data via Model Context Protocol (e.g., Weather API)."]
+    MCP_Server_2["MCP Context Server 2<br>External Service<br>Exposes specific tools and data via Model Context Protocol (e.g., Financial Data API)."]
+    DB[("Database<br>(Redis / Postgress)</br>Persistent storage for state")]
 
-    %% === Relationships ===
-    api_controller <-- "Invokes agent loop with user prompt" --> orchestrator
-    orchestrator <-- "Requests tools context" --> mcp_assembler
-    mcp_assembler <-- "Gets tools definition" --> tool_registry
-    orchestrator <-- "Sends prompt and context for inference" --> llm_client
-    orchestrator <-- "Invokes tools" --> tool_dispatcher
-    tool_dispatcher <-- "Tool use" --> device_apis
-    llm_client <-- "Inference" --> llm_api
+    %% Internal Relationships
+    Agent_Controller -- Initiates task execution<br>HTTP POST /api/v1/agent/execute --> Agent_Orchestration_Service
+    Agent_Orchestration_Service -- Sends messages and tool definitions for reasoning --> Model_Client
+    Agent_Orchestration_Service -- Requests an MCP Client instance for a specific tool --> MCP_Client_Registry
+    Agent_Orchestration_Service -- Persists/Retrieves agent task state --> Task_State_Repository
+    MCP_Client_Registry -- Creates and manages instances of (1..N) --> MCP_Client_1
+    MCP_Client_Registry -- Creates and manages instances of (1..N) --> MCP_Client_2
 
-    %% === Styling ===
-    classDef system fill:#438dd5,color:#fff,stroke:#2f6fab,stroke-width:1px,font-weight:bold;
-    classDef container fill:#999,color:#fff,stroke:#666,stroke-width:1px,font-weight:bold;
-    classDef component fill:#dfe7fd,color:#000,stroke:#7b8ab8,stroke-width:1px;
-    classDef legend fill:#fff,stroke:#bbb,color:#000,font-size:12px;
+    %% External Relationships
+    Model_Client -- Communicates with<br>HTTP/S (Spring AI) --> LLM
+    MCP_Client_1 -- Executes tool calls<br>HTTP/S --> MCP_Server_1
+    MCP_Client_2 -- Executes tool calls<br>HTTP/S --> MCP_Server_2
+    Task_State_Repository -- Persists/Retrieves task state --o DB
 ```
 
 ---
@@ -67,31 +64,26 @@ GenAI Orchestrator uses an orchestrated, multi-step reasoning loop to fulfill re
 ```mermaid
 flowchart TB
     %% === Container Boundary for Orchastrator ===
-    subgraph orchastrator["Orchastrator"]
+    subgraph orchastrator["ReAct Loop Orchestrator"]
         A["Receives User prompt"]
-        B{"Are tools definitions available?"}
-        C["Get MCP context payload"]
-        D["Send prompt and tools context to LLM"]
-        E{"Is response a tool call?"}
-        F["Call tools and return observation"]
-        G["Return final LLM response"]
+        B["Reason: Break down task and decide next action"]
+        C{"Is action a tool call?"}
+        D["Act: Call tools and return observation"]
+        E["Return final LLM response"]
     end
     class orchastrator container
 
     %% === Reasoning Flow ===
-    A --> B
-    B <-- "No" --> C
-    B -- "Yes" --> D
-    D --> E
-    E -- "Yes" --> F
-    F --> D
-    E -- "No" --> G
+    A --> B --> C
+    C -- "Yes" --> D
+    C -- "No" --> E
+    D --> B
 
     %% === Styling ===
     classDef process fill:#dfe7fd,stroke:#7b8ab8,stroke-width:1px,color:#000
     classDef decision fill:#fff3cd,stroke:#b1953d,stroke-width:1px,color:#000
-    class A,C,D,F,G process
-    class B,E decision
+    class A,B,D,E process
+    class C decision
 ```
 
 ---
@@ -118,7 +110,7 @@ flowchart TB
 1.  **Clone the repository:**
 
     ```sh
-    git clone [https://github.com/ndenniszhang/genai-orchestrator](https://github.com/ndenniszhang/genai-orchestrator)
+    git clone https://github.com/ndenniszhang/genai-orchestrator
     cd genai-orchestrator
     ```
 

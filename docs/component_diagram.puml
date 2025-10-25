@@ -1,0 +1,37 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+' Define the Container Boundary for the Application
+Container_Boundary(backend, "Agentic AI Backend") {
+
+    ' Define internal components
+    Component(agent_controller, "Agent Controller", "", "Handles incoming user requests and initiates agent tasks.")
+    Component(agent_orchestrator, "Agent Orchestrator (ReAct Loop)", "", "Manages the multi-step, cyclical reasoning and tool-use of an AI agent.")
+    Component(mcp_client_registry, "MCP Client Registry", "", "Discovers and manages multiple MCP Clients. Maps tool names to specific MCP Clients.")
+    Component(mcp_client_1, "MCP Client", "", "A client responsible for communicating with a *single* MCP Context Server. Instantiated by the Registry.")
+    Component(mcp_client_2, "MCP Client", "", "A client responsible for communicating with a *single* MCP Context Server. Instantiated by the Registry.")
+    Component(chat_client, "Chat Client", "", "Abstracts communication with the underlying Large Language Model (LLM). Formats prompts with history and tool definitions.")
+    Component(task_state_repository, "Task State Repository", "", "Manages the conversation and task state for each agent execution.")
+
+    ' Define internal relationships
+    agent_controller --> agent_orchestrator: "Initiates task execution", "HTTP POST /api/v1/agent/execute"
+    agent_orchestrator --> chat_client: "Sends messages and tool definitions for reasoning"
+    agent_orchestrator --> mcp_client_registry: "Requests an McpClient instance for a specific tool"
+    agent_orchestrator --> task_state_repository: "Persists/Retrieves agent task state"
+    mcp_client_registry --> mcp_client_1: "Creates and manages instances of", "1..N"
+    mcp_client_registry --> mcp_client_2: "Creates and manages instances of", "1..N"
+}
+
+' Define External Systems and Components
+Component_Ext(mcp_server_1, "MCP Context Server", "", "Exposes specific tools and data via Model Context Protocol (e.g., Weather API).")
+Component_Ext(mcp_server_2, "MCP Context Server", "", "Exposes specific tools and data via Model Context Protocol (e.g., Financial Data API).")
+System_Ext(llm, "Large Language Model", "Ollama Container / OpenAI API")
+ComponentDb_Ext(database, "Database", "Postgress / Redis", "Persistent storage for task state")
+
+' Define external relationships
+mcp_client_1 --> mcp_server_1: "Executes tool calls", "HTTP/S"
+mcp_client_2 --> mcp_server_2: "Executes tool calls", "HTTP/S"
+chat_client --> llm: "Communicates with", "HTTP/S (Spring AI)"
+task_state_repository ..> database: "Persists/Retrieves state"
