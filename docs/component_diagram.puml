@@ -1,37 +1,52 @@
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
+AddRelTag("dashed", $lineStyle = DashedLine())
 LAYOUT_WITH_LEGEND()
 
-' Define the Container Boundary for the Application
 Container_Boundary(backend, "Agentic AI Backend") {
+    Component(agent_controller, "Agent Controller", "Spring @RestController", "Handles user requests. Depends *only* on the AIOrchestrator interface.")
+    Component(ai_orchestrator, "AIOrchestrator", "Java Interface", "Facade defining the service contract for all agentic implementations.")
+    
+    Rel(agent_controller, ai_orchestrator, "Uses")
 
-    ' Define internal components
-    Component(agent_controller, "Agent Controller", "", "Handles incoming user requests and initiates agent tasks.")
-    Component(agent_orchestrator, "Agent Orchestrator (ReAct Loop)", "", "Manages the multi-step, cyclical reasoning and tool-use of an AI agent.")
-    Component(mcp_client_registry, "MCP Client Registry", "", "Discovers and manages multiple MCP Clients. Maps tool names to specific MCP Clients.")
-    Component(mcp_client_1, "MCP Client", "", "A client responsible for communicating with a *single* MCP Context Server. Instantiated by the Registry.")
-    Component(mcp_client_2, "MCP Client", "", "A client responsible for communicating with a *single* MCP Context Server. Instantiated by the Registry.")
-    Component(chat_client, "Chat Client", "", "Abstracts communication with the underlying Large Language Model (LLM). Formats prompts with history and tool definitions.")
-    Component(task_state_repository, "Task State Repository", "", "Manages the conversation and task state for each agent execution.")
-
-    ' Define internal relationships
-    agent_controller --> agent_orchestrator: "Initiates task execution", "HTTP POST /api/v1/agent/execute"
-    agent_orchestrator --> chat_client: "Sends messages and tool definitions for reasoning"
-    agent_orchestrator --> mcp_client_registry: "Requests an McpClient instance for a specific tool"
-    agent_orchestrator --> task_state_repository: "Persists/Retrieves agent task state"
-    mcp_client_registry --> mcp_client_1: "Creates and manages instances of", "1..N"
-    mcp_client_registry --> mcp_client_2: "Creates and manages instances of", "1..N"
+    Boundary(impl, "AI Orchastrator Implimentations") {
+        ' --- Implementation 1: Embabel ---
+        package "Embable Adapter (Profile: 'embable')" {
+            ' Embabel adapter talks to externals via its *own* logic
+            Component(embabel_adapter, "EmbabelAgentAdapter", "Spring @Service (@Profile('embabel'))", "Implements the orchestrator using the Embabel framework.")
+            Rel(embabel_adapter, ai_orchestrator, "Implements")
+        }
+        
+        ' --- Implementation 2: Custom ---
+        package "Custom Orchestrator Components (Profile: 'custom')" {
+            Component(custom_orchestrator, "CustomAgentOrchestrator", "Spring @Service (@Profile('custom'))", "Implements the orchestrator using custom components.")
+            Component(model_client, "Model Client", "Spring @Service", "Abstracts LLM communication.")
+            Component(mcp_client_registry, "MCP Client Registry", "Spring @Service", "Discovers and manages MCP Clients.")
+            Component(mcp_client_1, "MCP Client", "Java Class", "A client for a single MCP server. Instantiated by the Registry.")
+            Component(mcp_client_2, "MCP Client", "Java Class", "A client for a single MCP server. Instantiated by the Registry.")
+            Component(task_state_repository, "Task State Repository", "Spring @Repository", "Interface for state persistence.")
+            
+            Rel(custom_orchestrator, ai_orchestrator, "Implements")
+            Rel(custom_orchestrator, model_client, "Uses")
+            Rel(custom_orchestrator, mcp_client_registry, "Uses")
+            Rel(mcp_client_registry, mcp_client_1, "Manages")
+            Rel(mcp_client_registry, mcp_client_2, "Manages")
+            Rel(custom_orchestrator, task_state_repository, "Uses")
+        }
+    }
 }
 
-' Define External Systems and Components
-Component_Ext(mcp_server_1, "MCP Context Server", "", "Exposes specific tools and data via Model Context Protocol (e.g., Weather API).")
-Component_Ext(mcp_server_2, "MCP Context Server", "", "Exposes specific tools and data via Model Context Protocol (e.g., Financial Data API).")
-System_Ext(llm, "Large Language Model", "Ollama Container / OpenAI API")
-ComponentDb_Ext(database, "Database", "Postgress / Redis", "Persistent storage for task state")
+' --- External Systems ---
+Container(llm, "Large Language Model (LLM)", "Ollama Container / OpenAI API", "Provides reasoning capabilities.")
+Container(mcp_server_1, "MCP Server", "External Service", "Exposes tools via Model Context Protocol. (Web Search)")
+Container(mcp_server_2, "MCP Server", "External Service", "Exposes tools via Model Context Protocol. (Weather Info)")
+ContainerDb(database, "NoSQL Database", "MongoDB / Redis", "Stores agent task state.")
 
-' Define external relationships
-mcp_client_1 --> mcp_server_1: "Executes tool calls", "HTTP/S"
-mcp_client_2 --> mcp_server_2: "Executes tool calls", "HTTP/S"
-chat_client --> llm: "Communicates with", "HTTP/S (Spring AI)"
-task_state_repository ..> database: "Persists/Retrieves state"
+' --- Interface abstracts all external dependencies ---
+Rel(impl, llm, "Abstracts reasoning from")
+Rel(impl, mcp_server_1, "Abstracts tool use from")
+Rel(impl, mcp_server_2, "Abstracts tool use from")
+Rel(impl, database, "Abstracts state persistence to", $tags = "dashed")
+
+@enduml

@@ -1,0 +1,59 @@
+%%{ init: { "flowchart": { "defaultRenderer": "elk" } } }%%
+flowchart TB
+    %% ======================================================
+    %% Agentic AI Backend
+    %% ======================================================
+    subgraph backend["Agentic AI Backend"]
+        agent_controller["Agent Controller<br/><i>Spring @RestController</i><br/>Handles user requests.<br/>Depends *only* on the AIOrchestrator interface."]
+        ai_orchestrator["AIOrchestrator<br/><i>Java Interface</i><br/>Facade defining the service contract for all agentic implementations."]
+        agent_controller -->|Uses| ai_orchestrator
+
+        %% --------------------------------------------------
+        %% AI Orchestrator Implementations
+        %% --------------------------------------------------
+        subgraph impl["AI Orchestrator Impls"]
+            
+            %% Embabel Adapter
+            subgraph embabel["Embabel Adapter (Profile: 'embabel')"]
+                embabel_adapter["EmbabelAgentAdapter<br/><i>Spring @Service (@Profile('embabel'))</i><br/>Implements orchestrator using the Embabel framework."]
+                %% embabel_adapter -->|Implements| ai_orchestrator
+            end
+
+            %% Custom Orchestrator
+            subgraph custom["Custom Orchestrator Components (Profile: 'custom')"]
+                custom_orchestrator["CustomAgentOrchestrator<br/><i>Spring @Service (@Profile('custom'))</i><br/>Implements orchestrator using custom components."]
+                model_client["Model Client<br/><i>Spring @Service</i><br/>Abstracts LLM communication."]
+                mcp_client_registry["MCP Client Registry<br/><i>Spring @Service</i><br/>Discovers and manages MCP Clients."]
+                mcp_client_1["MCP Client<br/><i>Java Class</i><br/>Client for a single MCP server."]
+                mcp_client_2["MCP Client<br/><i>Java Class</i><br/>Client for a single MCP server."]
+                task_state_repository["Task State Repository<br/><i>Spring @Repository</i><br/>Interface for state persistence."]
+
+                custom_orchestrator -->|Uses| model_client
+                custom_orchestrator -->|Uses| mcp_client_registry
+                custom_orchestrator -->|Uses| task_state_repository
+                mcp_client_registry -->|Manages| mcp_client_1
+                mcp_client_registry -->|Manages| mcp_client_2
+            end
+        end
+
+        embabel_adapter -->|Implements| ai_orchestrator
+        custom_orchestrator -->|Implements| ai_orchestrator
+    end
+
+    subgraph external["External Components"]
+        %% ======================================================
+        %% External Systems
+        %% ======================================================
+        llm["Large Language Model (LLM)<br/><i>Ollama Container / OpenAI API</i><br/>Provides reasoning capabilities."]
+        mcp_server_1["MCP Server<br/><i>External Service</i><br/>Exposes tools via MCP. (Web Search)"]
+        mcp_server_2["MCP Server<br/><i>External Service</i><br/>Exposes tools via MCP. (Weather Info)"]
+        database[("NoSQL Database<br/><i>MongoDB / Redis</i><br/>Stores agent task state.")]
+
+        %% ======================================================
+        %% External Relationships
+        %% ======================================================
+        impl -->|Abstracts reasoning from| llm
+        impl -->|Abstracts tool use from| mcp_server_1
+        impl -->|Abstracts tool use from| mcp_server_2
+        impl -.->|Abstracts state persistence to| database
+    end
