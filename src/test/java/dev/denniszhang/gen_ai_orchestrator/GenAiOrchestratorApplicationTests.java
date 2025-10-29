@@ -1,10 +1,10 @@
-package dev.denniszhang.genaiorchestrator;
+package dev.denniszhang.gen_ai_orchestrator;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class GenaiorchestratorApplicationTests {
+class GenAiOrchestratorApplicationTests {
 
 	@Test
 	void contextLoads() {

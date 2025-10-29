@@ -1,4 +1,0 @@
-https://github.com/spring-projects/spring-ai-examples/tree/main/agentic-patterns/chain-workflow
-https://github.com/spring-projects/spring-ai-examples/blob/main/agentic-patterns/chain-workflow/src/main/java/com/example/agentic/ChainWorkflow.java
-https://www.intuit.com/blog/innovative-thinking/60-engineering-interview-questions-to-expect-and-12-to-ask-during-your-job-search/
-https://docs.spring.io/spring-ai/reference/api/mcp/mcp-overview.html
