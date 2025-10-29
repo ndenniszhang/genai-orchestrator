@@ -15,7 +15,63 @@ This design provides two key benefits:
 
 The diagram below illustrates this pluggable architecture. The `API Controller` depends only on the `AIOrchestrator` interface, completely decoupling it from the specific implementation details.
 
-![Component Diagram](docs/arch.svg)
+```mermaid
+flowchart TB
+    %% ======================================================
+    %% Agentic AI Backend
+    %% ======================================================
+    subgraph backend["Agentic AI Backend"]
+        agent_controller["Agent Controller<br/><i>Spring @RestController</i><br/>Handles user requests.<br/>Depends *only* on the AIOrchestrator interface."]
+        ai_orchestrator["AIOrchestrator<br/><i>Java Interface</i><br/>Facade defining the service contract for all agentic implementations."]
+        agent_controller -->|Uses| ai_orchestrator
+
+        %% --------------------------------------------------
+        %% AI Orchestrator Implementations
+        %% --------------------------------------------------
+        subgraph impl["AI Orchestrator Impl"]
+            %% Embabel Adapter
+            subgraph embabel["Embabel Adapter"]
+                embabel_adapter["EmbabelAgentAdapter<br/><i>Spring @Service (@Profile('embabel'))</i><br/>Implements orchestrator using the Embabel framework."]
+                %% embabel_adapter -->|Implements| ai_orchestrator
+            end
+
+            %% Custom Orchestrator
+            subgraph custom["Custom Orchestrator"]
+                custom_orchestrator["CustomAgentOrchestrator<br/><i>Spring @Service (@Profile('custom'))</i><br/>Implements orchestrator using custom components."]
+                model_client["Model Client<br/><i>Spring @Service</i><br/>Abstracts LLM communication."]
+                mcp_client_registry["MCP Client Registry<br/><i>Spring @Service</i><br/>Discovers and manages MCP Clients."]
+                mcp_client_1["MCP Client<br/><i>Java Class</i><br/>Client for a single MCP server."]
+                mcp_client_2["MCP Client<br/><i>Java Class</i><br/>Client for a single MCP server."]
+                task_state_repository["Task State Repository<br/><i>Spring @Repository</i><br/>Interface for state persistence."]
+
+                custom_orchestrator -->|Uses| model_client
+                custom_orchestrator -->|Uses| mcp_client_registry
+                custom_orchestrator -->|Uses| task_state_repository
+                mcp_client_registry -->|Manages| mcp_client_1
+                mcp_client_registry -->|Manages| mcp_client_2
+            end
+        end
+
+        embabel_adapter -->|Implements| ai_orchestrator
+        custom_orchestrator -->|Implements| ai_orchestrator
+    end
+
+    %% ======================================================
+    %% External Systems
+    %% ======================================================
+    llm["Large Language Model (LLM)<br/><i>Ollama Container / OpenAI API</i><br/>Provides reasoning capabilities."]
+    mcp_server_1["MCP Server<br/><i>External Service</i><br/>Exposes tools via MCP. (Web Search)"]
+    mcp_server_2["MCP Server<br/><i>External Service</i><br/>Exposes tools via MCP. (Weather Info)"]
+    database[("NoSQL Database<br/><i>MongoDB / Redis</i><br/>Stores agent task state.")]
+
+    %% ======================================================
+    %% External Relationships
+    %% ======================================================
+    model_client -->|Abstracts reasoning from| llm
+    mcp_client_1 -->|Abstracts tool use from| mcp_server_1
+    mcp_client_2 -->|Abstracts tool use from| mcp_server_2
+    task_state_repository -.->|Abstracts state persistence to| database
+```
 
 ---
 
@@ -38,19 +94,19 @@ The diagram below illustrates this pluggable architecture. The `API Controller` 
 
 ### 🔄 Interaction Flow (Custom ReAct Implementation)
 
-The custom orchestrator uses an orchestrated, multi-step reasoning loop:
+The custom orchestrator uses an orchestrated, multistep reasoning loop:
 
 ```mermaid
 flowchart TB
-    %% === Container Boundary for Orchastrator ===
-    subgraph orchastrator["ReAct Loop Orchestrator"]
+    %% === Container Boundary for Orchestrator ===
+    subgraph orchestrator["ReAct Loop Orchestrator"]
         A["Receives User prompt"]
         B["Reason: Break down task and decide next action"]
         C{"Is action a tool call?"}
         D["Act: Call tools and return observation"]
         E["Return final LLM response"]
     end
-    class orchastrator container
+    class orchestrator container
 
     %% === Reasoning Flow ===
     A --> B --> C
