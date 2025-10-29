@@ -44,9 +44,9 @@ Container(mcp_server_2, "MCP Server", "External Service", "Exposes tools via Mod
 ContainerDb(database, "NoSQL Database", "MongoDB / Redis", "Stores agent task state.")
 
 ' --- Interface abstracts all external dependencies ---
-Rel(impl, llm, "Abstracts reasoning from")
-Rel(impl, mcp_server_1, "Abstracts tool use from")
-Rel(impl, mcp_server_2, "Abstracts tool use from")
-Rel(impl, database, "Abstracts state persistence to", $tags = "dashed")
+Rel(model_client, llm, "Abstracts reasoning from")
+Rel(mcp_client_1, mcp_server_1, "Abstracts tool use from")
+Rel(mcp_client_2, mcp_server_2, "Abstracts tool use from")
+Rel(task_state_repository, database, "Abstracts state persistence to", $tags = "dashed")
 
 @enduml
