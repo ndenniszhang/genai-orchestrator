@@ -52,8 +52,44 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-	</dependencies>
 
+		<dependency>
+		    <groupId>com.embabel.agent</groupId>
+		    <artifactId>embabel-agent-starter</artifactId>
+		    <version>0.1.4</version>
+		</dependency>
+	</dependencies>
+	
+	<repositories>
+	    <repository>
+	        <id>embabel-releases</id>
+	        <url>https://repo.embabel.com/artifactory/libs-release</url>
+	        <releases>
+	            <enabled>true</enabled>
+	        </releases>
+	        <snapshots>
+	            <enabled>false</enabled>
+	        </snapshots>
+	    </repository>
+	    <repository>
+	        <id>embabel-snapshots</id>
+	        <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+	        <releases>
+	            <enabled>false</enabled>
+	        </releases>
+	        <snapshots>
+	            <enabled>true</enabled>
+	        </snapshots>
+	    </repository>
+	    <repository>
+	        <id>spring-milestones</id>
+	        <url>https://repo.spring.io/milestone</url>
+	        <snapshots>
+	            <enabled>false</enabled>
+	        </snapshots>
+	    </repository>
+	</repositories>
+	
 	<build>
 		<plugins>
 			<plugin>
@@ -82,5 +118,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>
