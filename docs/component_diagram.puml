@@ -12,7 +12,7 @@ Container_Boundary(backend, "Agentic AI Backend") {
 
     Boundary(impl, "AI Orchastrator Implimentations") {
         ' --- Implementation 1: Embabel ---
-        package "Embable Adapter (Profile: 'embable')" {
+        package "Embabel Adapter (Profile: 'embabel')" {
             ' Embabel adapter talks to externals via its *own* logic
             Component(embabel_adapter, "EmbabelAgentAdapter", "Spring @Service (@Profile('embabel'))", "Implements the orchestrator using the Embabel framework.")
             Rel(embabel_adapter, ai_orchestrator, "Implements")
