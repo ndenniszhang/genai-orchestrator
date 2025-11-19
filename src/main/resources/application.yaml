@@ -1,3 +1,7 @@
 spring:
   application:
     name: gen-ai-orchestrator
+
+  ai:
+    openai:
+      api-key: ignore
