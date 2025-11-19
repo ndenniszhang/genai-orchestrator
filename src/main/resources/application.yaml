@@ -5,3 +5,7 @@ spring:
   ai:
     openai:
       api-key: ignore
+      base-url: http://localhost:12434/engines
+      chat:
+        options:
+          model: ai/mistral
