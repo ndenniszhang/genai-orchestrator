@@ -1,6 +1,8 @@
 spring:
   application:
     name: gen-ai-orchestrator
+  profiles:
+    active: custom
 
   ai:
     openai:
