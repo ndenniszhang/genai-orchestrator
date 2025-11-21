@@ -11,3 +11,11 @@ spring:
       chat:
         options:
           model: ai/mistral
+    mcp:
+      client:
+        enabled: true
+        stdio:
+          connections:
+            docker-gateway:
+              command: docker
+              args: [mcp, gateway, run]
