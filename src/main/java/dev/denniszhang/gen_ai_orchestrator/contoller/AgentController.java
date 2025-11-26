@@ -16,8 +16,8 @@ class AgentController {
         this.orchestrator = orchestrator;
     }
 
-    @GetMapping("/goal")
-    public String goal(@RequestParam String message) {
+    @GetMapping("")
+    public String prompt(@RequestParam String message) {
         return this.orchestrator.goal(message);
     }
 }
