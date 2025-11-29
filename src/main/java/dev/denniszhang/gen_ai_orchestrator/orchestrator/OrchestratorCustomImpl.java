@@ -22,7 +22,7 @@ public class OrchestratorCustomImpl implements Orchestrator{
                                         "3. **Action Input:** Provide the necessary inputs for the tool in valid JSON format.\n" +
                                         "4. **Observation:** (The user/system will provide the output of the tool here. DO NOT generate this yourself).\n" +
                                         "\n" +
-                                        "... Repeat steps 1-4 as necessary ...\n" +
+                                        "... Repeat steps 1-4 no more than 10 iterations ...\n" +
                                         "\n" +
                                         "5. **Final Answer:** When you have enough information to answer the user's request, provide the final response clearly.\n" +
                                         "\n" +

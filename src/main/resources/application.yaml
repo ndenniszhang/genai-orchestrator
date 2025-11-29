@@ -1,3 +1,9 @@
+logging:
+  level:
+    web: DEBUG
+  file:
+    path: ./logs
+
 spring:
   application:
     name: gen-ai-orchestrator
@@ -19,3 +25,15 @@ spring:
             docker-gateway:
               command: docker
               args: [mcp, gateway, run]
+    chat:
+      observations:
+        log-prompt: true
+        log-completion: true
+        include-error-logging: true
+      client:
+        observations:
+          log-prompt: true
+          log-completion: true
+    tools:
+      observations:
+        include-content: true
