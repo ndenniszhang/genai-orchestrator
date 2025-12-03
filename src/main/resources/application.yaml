@@ -10,6 +10,11 @@ spring:
   profiles:
     active: custom
 
+  datasource:
+    url: jdbc:postgresql://localhost:5432/vectordb
+    username: user
+    password: password
+
   ai:
     openai:
       api-key: ignore
@@ -17,6 +22,9 @@ spring:
       chat:
         options:
           model: ai/gpt-oss
+      embedding:
+        options:
+          model: ai/nomic-embed-text-v1.5
     mcp:
       client:
         enabled: true
@@ -25,15 +33,29 @@ spring:
             docker-gateway:
               command: docker
               args: [mcp, gateway, run]
+    vectorstore:
+#      observations:
+#        log-query-response: true
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimension: 1536
+        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+
     chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
       observations:
         log-prompt: true
         log-completion: true
         include-error-logging: true
-      client:
-        observations:
-          log-prompt: true
-          log-completion: true
+#      client:
+#        observations:
+#          log-prompt: true
+#          log-completion: true
     tools:
       observations:
         include-content: true
