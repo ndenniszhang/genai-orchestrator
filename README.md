@@ -173,9 +173,6 @@ The application will be running on `http://localhost:8080`.
 You can interact with GenAI Orchestrator using a simple cURL request:
 
 ```sh
-curl -X POST http://localhost:8080/api/v1/agent \
--H "Content-Type: application/json" \
--d '{
-  "prompt": "What is the weather in New York?"
-}'
+curl -G "http://localhost:8080/api/v1/agent" \
+--data-urlencode "message=What is the weather in New York?"
 ```

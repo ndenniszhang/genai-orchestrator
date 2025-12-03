@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/agent")
+@RequestMapping("/api/v1/agent")
 class AgentController {
     @Autowired
     private Orchestrator orchestrator;
