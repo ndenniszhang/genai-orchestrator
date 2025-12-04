@@ -1,5 +1,6 @@
-package dev.denniszhang.gen_ai_orchestrator.orchestrator;
+package dev.denniszhang.gen_ai_orchestrator.infrastructure.service;
 
+import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Profile("custom")
-public class OrchestratorCustomImpl implements Orchestrator{
+public class CustomReActOrchestratorImpl implements OrchestratorService {
 
     @Autowired
     private VectorStore vectorStore;
@@ -129,7 +130,7 @@ public class OrchestratorCustomImpl implements Orchestrator{
         return chatResponse.getResult().getOutput().getText();
     }
 
-    public Orchestrator store(List<Document> documents) {
+    public OrchestratorService store(List<Document> documents) {
         if(!documents.isEmpty())
             this.vectorStore.add(documents);
         return this;

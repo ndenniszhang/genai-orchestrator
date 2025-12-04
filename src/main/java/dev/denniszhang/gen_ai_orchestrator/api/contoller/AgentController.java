@@ -1,6 +1,6 @@
-package dev.denniszhang.gen_ai_orchestrator.contoller;
+package dev.denniszhang.gen_ai_orchestrator.api.contoller;
 
-import dev.denniszhang.gen_ai_orchestrator.orchestrator.Orchestrator;
+import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +13,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/agent")
 class AgentController {
     @Autowired
-    private Orchestrator orchestrator;
+    private OrchestratorService orchestrator;
 
     @GetMapping()
     public String prompt(@RequestParam String message, @RequestParam(required = false) String conversationId) {
