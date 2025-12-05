@@ -27,7 +27,8 @@ Final Answer: [Your comprehensive, evidence-based answer to the user]
 
 ## AVAILABLE TOOLS
 You have access to the following tools. You must choose the tool that best fits the current step of your reasoning.
-%s
+
+<TOOLS>
 
 ## EXAMPLE INTERACTION (For Context Only)
 

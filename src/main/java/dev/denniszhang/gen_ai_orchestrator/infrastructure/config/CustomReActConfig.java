@@ -6,6 +6,8 @@ import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryReposito
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.stringtemplate.v4.STGroup;
+import org.stringtemplate.v4.STRawGroupDir;
 
 @Configuration
 @Profile("custom")
@@ -15,5 +17,10 @@ public class CustomReActConfig {
         return MessageWindowChatMemory.builder()
             .chatMemoryRepository(chatMemoryRepository)
             .build();
+    }
+
+    @Bean
+    public STGroup stGroup() {
+        return new STRawGroupDir("templates");
     }
 }

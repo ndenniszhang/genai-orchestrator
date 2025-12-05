@@ -9,28 +9,25 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.tool.DefaultToolCallingManager;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
-import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.stringtemplate.v4.STGroup;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @Profile("custom")
 public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Autowired
     private VectorStore vectorStore;
@@ -40,13 +37,8 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
     private ChatModel chatModel;
     @Autowired
     private ChatMemory chatMemory;
-
-    @Value("classpath:/templates/Prompt-Template.st")
-    private Resource PROMPT_TEMPLATE;
-    @Value("classpath:/templates/System-Template.st")
-    private Resource SYSTEM_TEMPLATE;
-
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    @Autowired
+    private STGroup stGroup;
 
     public String goal(String conversationId, String message) {
         if(chatMemory.get(conversationId).isEmpty()) {
@@ -55,14 +47,13 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
 
         int iteration = 0;
         ChatResponse chatResponse = null;
-        var template = new PromptTemplate(PROMPT_TEMPLATE);
         var toolCallingManager = DefaultToolCallingManager.builder().build();
         do{
-            var map = new HashMap<String, Object>();
-            map.put("MEMORY", chatMemory.get(conversationId));
-            map.put("KNOWLEDGE", getKnowledge(message));
-            map.put("MESSAGE", message);
-            var promptWithMemory = template.create(map, getChatOptions());
+            var template = stGroup.getInstanceOf("Prompt-Template");
+            template.add("MEMORY", chatMemory.get(conversationId));
+            template.add("KNOWLEDGE", getKnowledge(message));
+            template.add("MESSAGE", message);
+            var promptWithMemory = new Prompt(template.render());
 
             chatMemory.add(conversationId, new Prompt(new UserMessage(message), getChatOptions()).getInstructions());
             chatResponse = chatModel.call(promptWithMemory);
@@ -82,11 +73,17 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
 
     private SystemMessage getSystemMessage() {
         var toolDefinitions =  Arrays.stream(toolProvider.getToolCallbacks())
-            .map(ToolCallback::getToolDefinition)
-            .collect(Collectors
-            .toMap(d -> d.name(), d -> d.toString()));
+                .map(tool -> {
+                    var def = tool.getToolDefinition();
+                    return Map.of(
+                            "name", def.name(),
+                            "description", def.description(),
+                            "schema", def.inputSchema()).toString();
+                }).toArray();
 
-        return new SystemMessage(SYSTEM_TEMPLATE.toString().formatted(toolDefinitions));
+        var template = stGroup.getInstanceOf("System-Template");
+        template.add("TOOLS", toolDefinitions);
+        return new SystemMessage(template.render());
     }
 
     private List<Document> getKnowledge(String message) {

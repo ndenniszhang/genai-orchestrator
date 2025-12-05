@@ -18,7 +18,6 @@ class AgentController {
 
     @PostMapping
     public void upload(@RequestParam MultipartFile[] files) {
-
         return;
     }
 }
