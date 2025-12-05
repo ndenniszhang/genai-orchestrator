@@ -12,11 +12,14 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.model.tool.DefaultToolCallingManager;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.stringtemplate.v4.STGroup;
 
@@ -39,6 +42,8 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
     private ChatMemory chatMemory;
     @Autowired
     private STGroup stGroup;
+    @Autowired
+    private TokenTextSplitter textSplitter;
 
     public String goal(String conversationId, String message) {
         if(chatMemory.get(conversationId).isEmpty()) {
@@ -49,10 +54,10 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         ChatResponse chatResponse = null;
         var toolCallingManager = DefaultToolCallingManager.builder().build();
         do{
-            var template = stGroup.getInstanceOf("Prompt-Template");
-            template.add("MEMORY", chatMemory.get(conversationId));
-            template.add("KNOWLEDGE", getKnowledge(message));
-            template.add("MESSAGE", message);
+            var template = stGroup.getInstanceOf("Prompt-Template")
+                .add("MEMORY", chatMemory.get(conversationId))
+                .add("KNOWLEDGE", getKnowledge(message))
+                .add("MESSAGE", message);
             var promptWithMemory = new Prompt(template.render());
 
             chatMemory.add(conversationId, new Prompt(new UserMessage(message), getChatOptions()).getInstructions());
@@ -81,8 +86,8 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                             "schema", def.inputSchema()).toString();
                 }).toArray();
 
-        var template = stGroup.getInstanceOf("System-Template");
-        template.add("TOOLS", toolDefinitions);
+        var template = stGroup.getInstanceOf("System-Template")
+                .add("TOOLS", toolDefinitions);
         return new SystemMessage(template.render());
     }
 
@@ -101,9 +106,12 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                 .build();
     }
 
-    public OrchestratorService store(List<Document> documents) {
-        if(!documents.isEmpty())
-            this.vectorStore.add(documents);
+    public OrchestratorService store(Resource[] resources) {
+        if(resources.length != 0) {
+            Arrays.stream(resources)
+            .map(r -> textSplitter.apply(new TikaDocumentReader(r).get()))
+            .forEach(l -> vectorStore.accept(l));
+        }
         return this;
     }
 }
