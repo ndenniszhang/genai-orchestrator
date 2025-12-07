@@ -4,5 +4,5 @@ import org.springframework.core.io.Resource;
 
 public interface OrchestratorService {
     String goal(String conversationId, String message);
-    OrchestratorService store(Resource[] resources);
+    void store(Resource[] resources);
 }

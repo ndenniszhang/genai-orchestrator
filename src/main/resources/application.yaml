@@ -21,7 +21,7 @@ spring:
       base-url: http://localhost:12434/engines
       chat:
         options:
-          model: ai/gpt-oss
+          model: ai/llama3.1
       embedding:
         options:
           model: ai/nomic-embed-text-v1.5

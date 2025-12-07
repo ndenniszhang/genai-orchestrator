@@ -1,6 +1,7 @@
 package dev.denniszhang.gen_ai_orchestrator.infrastructure.service;
 
 import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
+import dev.denniszhang.gen_ai_orchestrator.core.service.PromptService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -21,11 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.stringtemplate.v4.STGroup;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Profile("custom")
@@ -41,32 +40,27 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
     @Autowired
     private ChatMemory chatMemory;
     @Autowired
-    private STGroup stGroup;
-    @Autowired
-    private TokenTextSplitter textSplitter;
+    private PromptService prompt;
 
     public String goal(String conversationId, String message) {
         if(chatMemory.get(conversationId).isEmpty()) {
-            chatMemory.add(conversationId, new Prompt(getSystemMessage(), getChatOptions()).getInstructions());
+            chatMemory.add(conversationId, new SystemMessage(
+                    prompt.getSystemPrompt(toolProvider.getToolCallbacks())));
         }
+        chatMemory.add(conversationId, new UserMessage("%s\n\n%s".formatted(getKnowledge(message), message )));
 
         int iteration = 0;
         ChatResponse chatResponse = null;
         var toolCallingManager = DefaultToolCallingManager.builder().build();
         do{
-            var template = stGroup.getInstanceOf("Prompt-Template")
-                .add("MEMORY", chatMemory.get(conversationId))
-                .add("KNOWLEDGE", getKnowledge(message))
-                .add("MESSAGE", message);
-            var promptWithMemory = new Prompt(template.render());
-
-            chatMemory.add(conversationId, new Prompt(new UserMessage(message), getChatOptions()).getInstructions());
+            var promptWithMemory = new Prompt(prompt.map(chatMemory.get(conversationId)), getChatOptions());
             chatResponse = chatModel.call(promptWithMemory);
             chatMemory.add(conversationId, chatResponse.getResult().getOutput());
 
             if(chatResponse.hasToolCalls()) {
                 var toolExecutionResult = toolCallingManager.executeToolCalls(promptWithMemory, chatResponse);
-                chatMemory.add(conversationId, toolExecutionResult.conversationHistory()
+                chatMemory.add(conversationId,
+                        toolExecutionResult.conversationHistory()
                         .get(toolExecutionResult.conversationHistory().size() - 1));
             }
 
@@ -76,26 +70,11 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         return chatResponse.getResult().getOutput().getText();
     }
 
-    private SystemMessage getSystemMessage() {
-        var toolDefinitions =  Arrays.stream(toolProvider.getToolCallbacks())
-                .map(tool -> {
-                    var def = tool.getToolDefinition();
-                    return Map.of(
-                            "name", def.name(),
-                            "description", def.description(),
-                            "schema", def.inputSchema()).toString();
-                }).toArray();
-
-        var template = stGroup.getInstanceOf("System-Template")
-                .add("TOOLS", toolDefinitions);
-        return new SystemMessage(template.render());
-    }
-
     private List<Document> getKnowledge(String message) {
         return vectorStore.similaritySearch(SearchRequest.builder()
-                .query(message)
                 .similarityThreshold(0.8d)
                 .topK(6)
+                .query(message)
                 .build());
     }
 
@@ -103,15 +82,18 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         return ToolCallingChatOptions.builder()
                 .toolCallbacks(toolProvider.getToolCallbacks())
                 .internalToolExecutionEnabled(false)
+                .temperature(0.0)
                 .build();
     }
 
-    public OrchestratorService store(Resource[] resources) {
+    @Autowired
+    private TokenTextSplitter textSplitter;
+
+    public void store(Resource[] resources) {
         if(resources.length != 0) {
             Arrays.stream(resources)
             .map(r -> textSplitter.apply(new TikaDocumentReader(r).get()))
             .forEach(l -> vectorStore.accept(l));
         }
-        return this;
     }
 }
