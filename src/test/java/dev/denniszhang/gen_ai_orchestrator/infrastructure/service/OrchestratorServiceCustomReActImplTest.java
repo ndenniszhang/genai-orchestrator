@@ -78,11 +78,11 @@ class OrchestratorServiceCustomReActImplTest {
         when(chatModel.call(any(Prompt.class))).thenReturn(mockResponse);
 
         // --- ACT ---
-        String result = orchestratorService.goal(conversationId, userMessage);
+        Message result = orchestratorService.chat(conversationId, userMessage);
 
         // --- ASSERT ---
         // 1. Verify the result matches what we extracted from the LLM
-        assertThat(result).contains(expectedAnswer);
+        assertThat(result.getText()).contains(expectedAnswer);
 
         // 2. Verify the loop ran exactly once (since we gave a Final Answer)
         verify(chatModel, times(1)).call(any(Prompt.class));

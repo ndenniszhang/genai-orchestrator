@@ -15,16 +15,21 @@ spring:
     username: user
     password: password
 
+  mvc:
+    async:
+      request-timeout: 600000
+
   ai:
     openai:
       api-key: ignore
       base-url: http://localhost:12434/engines
       chat:
         options:
-          model: ai/llama3.1
+          model: ai/qwen3:latest
+          temperature: 0.0
       embedding:
         options:
-          model: ai/nomic-embed-text-v1.5
+          model: ai/nomic-embed-text-v1.5:latest
     mcp:
       client:
         enabled: true
@@ -34,8 +39,8 @@ spring:
               command: docker
               args: [mcp, gateway, run]
     vectorstore:
-#      observations:
-#        log-query-response: true
+      observations:
+        log-query-response: true
       pgvector:
         initialize-schema: true
         index-type: HNSW
@@ -52,10 +57,10 @@ spring:
         log-prompt: true
         log-completion: true
         include-error-logging: true
-#      client:
-#        observations:
-#          log-prompt: true
-#          log-completion: true
+      client:
+        observations:
+          log-prompt: true
+          log-completion: true
     tools:
       observations:
         include-content: true
