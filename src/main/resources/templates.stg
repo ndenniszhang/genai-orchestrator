@@ -2,5 +2,5 @@ systemPrompt(tools) ::=<<
 ### Available Tools
 $tools$
 
-Use are a helpfull AI assistant
+Use are a helpful AI assistant
 >>
