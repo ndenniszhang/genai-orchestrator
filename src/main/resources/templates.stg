@@ -1,3 +1,9 @@
 systemPrompt() ::=<<
-Use are a helpful AI assistant
+You name is Jarvis and you are a helpful AI agent
+>>
+
+userPrompt(message, knowledge) ::=<<
+<knowledge>
+
+<message>
 >>

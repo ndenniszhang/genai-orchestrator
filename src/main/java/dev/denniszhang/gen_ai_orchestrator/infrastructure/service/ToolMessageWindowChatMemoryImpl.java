@@ -11,7 +11,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.util.Assert;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ToolMessageWindowChatMemoryImpl implements ChatMemory {
     private static final int DEFAULT_MAX_MESSAGES = 20;
@@ -98,29 +97,32 @@ public class ToolMessageWindowChatMemoryImpl implements ChatMemory {
 
     private List<Message> getAll(String conversationId) {
         var memory = this.chatMemoryRepository.findByConversationId(conversationId);
-        var toolCallDocuments = getDocs(conversationId);
+        var documents = getDocs(conversationId);
 
         Integer idx = null;
-        for (var toolCall : toolCallDocuments) {
-            var metadata = toolCall.getMetadata();
+        for (var document : documents) {
+            var metadata = document.getMetadata();
             idx = (Integer) metadata.get("index");
+
             metadata.remove("index");
             metadata.remove("conversationId");
-            Message message = null;
+            metadata.put("id", document.getId());
 
+            Message message = null;
             if (metadata.get("messageType").equals("ASSISTANT")) {
                 var toolCalls = ((List<LinkedHashMap<String, String>>) metadata.get("toolCalls")).stream()
-                        .map(map -> new AssistantMessage.ToolCall(
-                                map.get("id"),
-                                map.get("type"),
-                                map.get("name"),
-                                map.get("arguments")
-                        ))
+                        .map(map ->
+                                new AssistantMessage.ToolCall(
+                                                                map.get("id"),
+                                                                map.get("type"),
+                                                                map.get("name"),
+                                                                map.get("arguments")
+                                                        ))
                         .toList();
                 metadata.remove("toolCalls");
 
                 message = AssistantMessage.builder()
-                        .content(toolCall.getText())
+                        .content(document.getText())
                         .toolCalls(toolCalls)
                         .properties(metadata)
                         .build();
@@ -148,35 +150,37 @@ public class ToolMessageWindowChatMemoryImpl implements ChatMemory {
     }
 
     private void saveAll(String conversationId, List<Message> messages) {
-        final String SYSTEM_FINGERPRINT_ID = "system-fingerprint";
+        final String ID = "id";
         List<Message> chatMessages = new ArrayList<>();
         List<Document> toolMessages = new ArrayList<>();
-        String system_fingerprint = null;
-        Set<String> fingerprints = getDocs(conversationId).stream()
-                .map(d -> d.getMetadata().get(SYSTEM_FINGERPRINT_ID).toString())
-                .collect(Collectors.toSet());
 
         for(int i = 0; i < messages.size(); i++) {
-            var message = messages.get(i);
+            Message message = messages.get(i);
+            Map<String, Object> metadata = message.getMetadata();
             switch (message.getMessageType()) {
+
                 case MessageType.SYSTEM, MessageType.USER:
                     chatMessages.add(message);
                     break;
+
                 case MessageType.ASSISTANT:
                     if (!message.getText().isEmpty())
                         chatMessages.add(message);
-                    else {
-                        system_fingerprint = message.getMetadata().get(SYSTEM_FINGERPRINT_ID).toString();
-                        if(!fingerprints.contains(system_fingerprint))
-                            toolMessages.add(toDocument(message, conversationId, i));
+                    else if (!metadata.containsKey(ID)) {
+                        metadata.put("conversationId", conversationId);
+                        metadata.put("index", i);
+                        toolMessages.add(toDocument(message));
                     }
                     break;
+
                 case MessageType.TOOL:
-                    if (!message.getMetadata().containsKey(SYSTEM_FINGERPRINT_ID)) {
-                        message.getMetadata().put(SYSTEM_FINGERPRINT_ID, system_fingerprint);
-                        toolMessages.add(toDocument(message, conversationId, i));
+                    if (!metadata.containsKey(ID)) {
+                        metadata.put("conversationId", conversationId);
+                        metadata.put("index", i);
+                        toolMessages.add(toDocument(message));
                     }
                     break;
+
                 default:
                     throw new RuntimeException("Unhandled message type: " + message.getMessageType());
             }
@@ -186,10 +190,8 @@ public class ToolMessageWindowChatMemoryImpl implements ChatMemory {
         this.vectorStore.accept(toolMessages);
     }
 
-    private Document toDocument(Message message, String conversationId, int index) {
+    private Document toDocument(Message message) {
         Map<String, Object> metadata = new HashMap<>(message.getMetadata() != null ? message.getMetadata() : new HashMap<>());
-        metadata.put("index", index);
-        metadata.put("conversationId", conversationId);
 
         if (message instanceof AssistantMessage assistantMessage) {
             metadata.put("toolCalls",  assistantMessage.getToolCalls());

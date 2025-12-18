@@ -52,7 +52,7 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         if(chatMemory.get(conversationId).isEmpty()) {
             chatMemory.add(conversationId, messageFactory.createSystem());
         }
-        chatMemory.add(conversationId, messageFactory.createUser("%s\n\n%s".formatted(getKnowledge(message), message )));
+        chatMemory.add(conversationId, messageFactory.createUser(message, getKnowledge(message)));
 
         var promptWithHistory = new Prompt(chatMemory.get(conversationId), getChatOptions(true));
         var assistantMessage = chatModel.call(promptWithHistory).getResult().getOutput();
@@ -66,27 +66,31 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         if(chatMemory.get(conversationId).isEmpty()) {
             chatMemory.add(conversationId, messageFactory.createSystem());
         }
-        chatMemory.add(conversationId, messageFactory.createUser("%s\n\n%s".formatted(getKnowledge(message), message )));
+        chatMemory.add(conversationId, messageFactory.createUser(message, getKnowledge(message)));
 
         return recursiveStreamLoop(0, conversationId, chatMemory, DefaultToolCallingManager.builder().build());
     }
 
     private Flux<AssistantMessage> recursiveStreamLoop(int iteration, String conversationId, ChatMemory chatMemory, ToolCallingManager toolCallingManager) {
         if(iteration == 10) {
+            final String answer = "Can't generate answer";
+            chatMemory.add(conversationId, AssistantMessage.builder()
+                                            .content(answer)
+                                            .build());
             return Flux.just(AssistantMessage.builder()
-                    .content("Can't generate answer")
+                    .content(answer)
                     .build());
         }
 
-        var promptWithMemory = new Prompt(chatMemory.get(conversationId), getChatOptions(false));
-        var source = chatModel.stream(promptWithMemory).share();
+        Prompt promptWithMemory = new Prompt(chatMemory.get(conversationId), getChatOptions(false));
+        Flux<ChatResponse> source = chatModel.stream(promptWithMemory).share();
 
-        var aggregatedResponse = source
-            .collectList() // Collect all chunks
-            .map(this::aggregateChunks);
-        var messages = source
-            .map(ChatResponse::getResult)
-            .map(Generation::getOutput);
+        Mono <ChatResponse> aggregatedResponse = source
+                                                    .collectList() // Collect all chunks
+                                                    .map(this::aggregateChunks);
+        Flux<AssistantMessage> messages = source
+                                            .map(ChatResponse::getResult)
+                                            .map(Generation::getOutput);
 
         return messages
                 .concatWith(aggregatedResponse
@@ -150,16 +154,21 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                     ));
             aggregateMetaData.put("reasoningContent", fullReasoning.toString());
 
+            if(!accumulatedToolCalls.isEmpty() && fullReasoning.isEmpty()) {
+                aggregateMetaData.put("reasoningContent", fullContent.toString());
+                fullContent.setLength(0);
+            }
+
             var aggregatedMessage = AssistantMessage.builder()
                     .toolCalls(accumulatedToolCalls)
                     .properties(aggregateMetaData)
                     .content(fullContent.toString())
                     .build();
 
-            return new ChatResponse(
-                    List.of(new Generation(aggregatedMessage)),
-                    lastMetadata
-            );
+            return ChatResponse.builder()
+                    .generations(List.of(new Generation (aggregatedMessage)))
+                    .metadata(lastMetadata)
+                    .build();
     }
 
     @Autowired
