@@ -1,6 +1,3 @@
-systemPrompt(tools) ::=<<
-### Available Tools
-$tools$
-
+systemPrompt() ::=<<
 Use are a helpful AI assistant
 >>

@@ -1,9 +1,10 @@
 package dev.denniszhang.gen_ai_orchestrator.infrastructure.config;
 
+import dev.denniszhang.gen_ai_orchestrator.infrastructure.service.ToolMessageWindowChatMemoryImpl;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -12,9 +13,10 @@ import org.springframework.context.annotation.Profile;
 @Profile("custom")
 public class CustomReActConfig {
     @Bean
-    public ChatMemory chatMemory(JdbcChatMemoryRepository chatMemoryRepository) {
-        return MessageWindowChatMemory.builder()
+    public ChatMemory chatMemory(JdbcChatMemoryRepository chatMemoryRepository, VectorStore vectorStore) {
+        return ToolMessageWindowChatMemoryImpl.builder()
                 .chatMemoryRepository(chatMemoryRepository)
+                .vectorStore(vectorStore)
                 .build();
     }
 
@@ -27,6 +29,5 @@ public class CustomReActConfig {
                 10000, // maxNumChunks: Safety limit
                 true   // keepSeparator: Preserve sentence boundaries
         );
-
     }
 }
