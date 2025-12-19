@@ -4,6 +4,7 @@ import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -31,7 +32,7 @@ class AgentController {
     }
 
     @GetMapping("stream")
-    public Flux<AssistantMessage> stream(@RequestParam String message, @RequestParam String conversationId) {
+    public Flux<Message> stream(@RequestParam String message, @RequestParam String conversationId) {
         return orchestrator.stream(conversationId, message);
     }
 

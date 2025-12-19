@@ -21,10 +21,12 @@ spring:
 
   ai:
     openai:
+#      base-url: https://api.groq.com/openai
       api-key: ignore
       base-url: http://localhost:12434/engines
       chat:
         options:
+#          model: llama-3.1-8b-instant
           model: ai/llama3.1:latest
           temperature: 0.0
       embedding:

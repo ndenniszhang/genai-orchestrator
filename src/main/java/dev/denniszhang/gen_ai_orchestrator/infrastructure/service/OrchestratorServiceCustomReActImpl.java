@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -62,7 +63,7 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
     }
 
     @Override
-    public Flux<AssistantMessage> stream(String conversationId, String message) {
+    public Flux<Message> stream(String conversationId, String message) {
         if(chatMemory.get(conversationId).isEmpty()) {
             chatMemory.add(conversationId, messageFactory.createSystem());
         }
@@ -71,7 +72,7 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         return recursiveStreamLoop(0, conversationId, chatMemory, DefaultToolCallingManager.builder().build());
     }
 
-    private Flux<AssistantMessage> recursiveStreamLoop(int iteration, String conversationId, ChatMemory chatMemory, ToolCallingManager toolCallingManager) {
+    private Flux<Message> recursiveStreamLoop(int iteration, String conversationId, ChatMemory chatMemory, ToolCallingManager toolCallingManager) {
         if(iteration == 10) {
             final String answer = "Can't generate answer";
             chatMemory.add(conversationId, AssistantMessage.builder()
@@ -88,9 +89,9 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         Mono <ChatResponse> aggregatedResponse = source
                                                     .collectList() // Collect all chunks
                                                     .map(this::aggregateChunks);
-        Flux<AssistantMessage> messages = source
-                                            .map(ChatResponse::getResult)
-                                            .map(Generation::getOutput);
+        Flux<Message> messages = source
+                                    .map(ChatResponse::getResult)
+                                    .map(Generation::getOutput);
 
         return messages
                 .concatWith(aggregatedResponse
@@ -104,7 +105,12 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                             var toolMessage = toolExecutionResult.conversationHistory().getLast(); // ToolResponseMessage.builder().build();
                             chatMemory.add(conversationId, toolMessage);
 
-                            return recursiveStreamLoop(iteration + 1, conversationId, chatMemory, toolCallingManager);
+                            return Flux.just(toolMessage)
+                                    .doOnNext(m -> {
+                                        m.getMetadata().remove("conversationId");
+                                        m.getMetadata().remove("index");
+                                    })
+                                    .concatWith(recursiveStreamLoop(iteration + 1, conversationId, chatMemory, toolCallingManager));
                         }
 
                         return Mono.just(message);
