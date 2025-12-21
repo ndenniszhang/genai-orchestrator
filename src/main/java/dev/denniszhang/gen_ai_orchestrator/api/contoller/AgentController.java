@@ -1,6 +1,7 @@
 package dev.denniszhang.gen_ai_orchestrator.api.contoller;
 
 import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
+import dev.denniszhang.gen_ai_orchestrator.infrastructure.model.MessageDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -26,14 +27,14 @@ class AgentController {
     @Autowired
     private OrchestratorService orchestrator;
 
-    @GetMapping("chat")
-    public AssistantMessage chat(@RequestParam String message, @RequestParam String conversationId) {
-        return orchestrator.chat(conversationId, message);
+    @PostMapping("chat")
+    public AssistantMessage chat(@RequestBody MessageDTO messageDTO) {
+        return orchestrator.chat(messageDTO.conversationId(), messageDTO.message());
     }
 
-    @GetMapping("stream")
-    public Flux<Message> stream(@RequestParam String message, @RequestParam String conversationId) {
-        return orchestrator.stream(conversationId, message);
+    @PostMapping("stream")
+    public Flux<Message> stream(@RequestBody MessageDTO messageDTO) {
+        return orchestrator.stream(messageDTO.conversationId(), messageDTO.message());
     }
 
     @PostMapping
