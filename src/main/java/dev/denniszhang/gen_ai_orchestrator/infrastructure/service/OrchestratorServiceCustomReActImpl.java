@@ -21,7 +21,6 @@ import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -39,14 +38,25 @@ import java.util.stream.Collectors;
 public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
-    private ToolCallbackProvider toolProvider;
-    @Autowired
-    private ChatModel chatModel;
-    @Autowired
-    private ChatMemory chatMemory;
-    @Autowired
-    private MessageFactory messageFactory;
+    private final ToolCallbackProvider toolProvider;
+    private final ChatModel chatModel;
+    private final ChatMemory chatMemory;
+    private final MessageFactory messageFactory;
+    private final VectorStore vectorStore;
+
+    public OrchestratorServiceCustomReActImpl(
+            ChatModel chatModel,
+            ChatMemory chatMemory,
+            ToolCallbackProvider toolProvider,
+            MessageFactory messageFactory,
+            VectorStore vectorStore
+    ) {
+        this.chatModel = chatModel;
+        this.chatMemory = chatMemory;
+        this.vectorStore = vectorStore;
+        this.toolProvider = toolProvider;
+        this.messageFactory = messageFactory;
+    }
 
     @Override
     public AssistantMessage chat(String conversationId, String message) {
@@ -86,12 +96,10 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
         Prompt promptWithMemory = new Prompt(chatMemory.get(conversationId), getChatOptions(false));
         Flux<ChatResponse> source = chatModel.stream(promptWithMemory).share();
 
-        Mono <ChatResponse> aggregatedResponse = source
-                                                    .collectList() // Collect all chunks
-                                                    .map(this::aggregateChunks);
-        Flux<Message> messages = source
-                                    .map(ChatResponse::getResult)
-                                    .map(Generation::getOutput);
+        Mono <ChatResponse> aggregatedResponse = source.collectList()
+                                                        .filter(list -> !list.isEmpty())
+                                                        .map(this::aggregateChunks);
+        Flux<Message> messages = source.map(response -> response.getResults().getFirst().getOutput());
 
         return messages
                 .concatWith(aggregatedResponse
@@ -177,9 +185,6 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                     .build();
     }
 
-    @Autowired
-    private VectorStore vectorStore;
-
     private List<Document> getKnowledge(String message) {
         return vectorStore.similaritySearch(
                 SearchRequest.builder()
@@ -189,14 +194,17 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                 .build());
     }
 
-    @Autowired
-    private TokenTextSplitter textSplitter;
-
     public void store(Resource[] resources) {
-        if(resources.length != 0) {
+        if (resources.length != 0) {
             Arrays.stream(resources)
-            .map(resource -> textSplitter.apply(new TikaDocumentReader(resource).get()))
-            .forEach(docs -> vectorStore.add(docs));
+                    .map(resource -> new TokenTextSplitter(
+                            800,  // defaultChunkSize: Target ~800 tokens per chunk
+                            350,  // minChunkSizeChars: Avoid creating tiny, useless chunks
+                            5,    // minChunkLengthToEmbed: Discard artifacts/noise
+                            10000, // maxNumChunks: Safety limit
+                            true   // keepSeparator: Preserve sentence boundaries
+                    ).apply(new TikaDocumentReader(resource).get()))
+                    .forEach(docs -> vectorStore.add(docs));
         }
     }
 }

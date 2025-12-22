@@ -1,6 +1,13 @@
 logging:
   level:
     web: DEBUG
+
+    # 1. Log the HTTP exchange (Headers & Body)
+    org.springframework.web.client.RestClient: DEBUG
+
+    # 2. Log the specific OpenAI API bindings (Internal API calls)
+    org.springframework.ai.openai.api: DEBUG
+
   file:
     path: ./logs
 
@@ -21,15 +28,15 @@ spring:
 
   ai:
     openai:
-#      base-url: https://api.groq.com/openai
-      api-key: ignore
+      api-key: ${GROQ_API_KEY}
       base-url: http://localhost:12434/engines
       chat:
+        base-url: https://api.groq.com/openai
         options:
-#          model: llama-3.1-8b-instant
-          model: ai/llama3.1:latest
-          temperature: 0.0
+          model: openai/gpt-oss-120b
+          temperature: 0
       embedding:
+        base-url: http://localhost:12434/engines
         options:
           model: ai/nomic-embed-text-v1.5:latest
     mcp:
@@ -55,14 +62,12 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+
       observations:
         log-prompt: true
         log-completion: true
         include-error-logging: true
-      client:
-        observations:
-          log-prompt: true
-          log-completion: true
+
     tools:
       observations:
         include-content: true
