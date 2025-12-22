@@ -1,3 +1,73 @@
+logging:
+  level:
+    web: DEBUG
+
+    # 1. Log the HTTP exchange (Headers & Body)
+    org.springframework.web.client.RestClient: DEBUG
+
+    # 2. Log the specific OpenAI API bindings (Internal API calls)
+    org.springframework.ai.openai.api: DEBUG
+
+  file:
+    path: ./logs
+
 spring:
   application:
     name: gen-ai-orchestrator
+  profiles:
+    active: custom
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/vectordb
+    username: user
+    password: password
+
+  mvc:
+    async:
+      request-timeout: 6000000
+
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY}
+      base-url: http://localhost:12434/engines
+      chat:
+        base-url: https://api.groq.com/openai
+        options:
+          model: openai/gpt-oss-120b
+          temperature: 0
+      embedding:
+        base-url: http://localhost:12434/engines
+        options:
+          model: ai/nomic-embed-text-v1.5:latest
+    mcp:
+      client:
+        enabled: true
+        stdio:
+          connections:
+            docker-gateway:
+              command: docker
+              args: [mcp, gateway, run]
+    vectorstore:
+      observations:
+        log-query-response: true
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimension: 1536
+        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
+      observations:
+        log-prompt: true
+        log-completion: true
+        include-error-logging: true
+
+    tools:
+      observations:
+        include-content: true
