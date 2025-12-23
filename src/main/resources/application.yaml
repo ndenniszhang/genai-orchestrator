@@ -1,15 +1,19 @@
 logging:
   level:
     web: DEBUG
-
     # 1. Log the HTTP exchange (Headers & Body)
     org.springframework.web.client.RestClient: DEBUG
-
     # 2. Log the specific OpenAI API bindings (Internal API calls)
     org.springframework.ai.openai.api: DEBUG
-
   file:
     path: ./logs
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /api-docs
 
 spring:
   application:

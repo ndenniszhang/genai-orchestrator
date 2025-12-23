@@ -159,7 +159,7 @@ flowchart TB
 3.  **Build and run the application:**
     ```sh
     # Run the Embabel orchestrator (default)
-    ./mvnw spring-boot:run
+    ./mvnw spring-boot:run -Dspring.profiles.active=embabel
     ```
     ```sh
     # Or run the Custom ReAct orchestrator
@@ -173,6 +173,7 @@ The application will be running on `http://localhost:8080`.
 You can interact with GenAI Orchestrator using a simple cURL request:
 
 ```sh
-curl -G "http://localhost:8080/api/v1/agent" \
---data-urlencode "message=What is the weather in New York?"
+curl -X POST http://localhost:8080/api/v1/agent/chat \
+-H "Content-Type: application/json" \
+-d '{"conversationId": "test-1", "message": "What is the weather in New York?"}'
 ```
