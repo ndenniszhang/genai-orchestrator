@@ -3,6 +3,7 @@ package dev.denniszhang.gen_ai_orchestrator.infrastructure.service;
 import dev.denniszhang.gen_ai_orchestrator.core.service.MessageFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.document.Document;
@@ -36,6 +37,13 @@ public class MessageFactoryImpl implements MessageFactory {
                         .add("message", message)
                         .add("knowledge", documents)
                         .render())
+                .build();
+    }
+
+    @Override
+    public AssistantMessage createAssistant(String message) {
+        return AssistantMessage.builder()
+                .content(message)
                 .build();
     }
 }

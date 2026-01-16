@@ -1,5 +1,6 @@
 package dev.denniszhang.gen_ai_orchestrator.api.contoller;
 
+import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
 import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
 import dev.denniszhang.gen_ai_orchestrator.infrastructure.model.MessageDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,10 +26,13 @@ import java.util.Arrays;
 @RequestMapping("/api/v1/agent")
 class AgentController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    private final ContextEngine contextEngine;
     private final OrchestratorService orchestrator;
 
-    private AgentController(OrchestratorService orchestrator) {
+    private AgentController(OrchestratorService orchestrator, ContextEngine contextEngine) {
         this.orchestrator = orchestrator;
+        this.contextEngine = contextEngine;
     }
 
     @Operation(summary = "Synchronous Chat", description = "Sends a message to the agent and waits for the full response.")
@@ -45,7 +49,7 @@ class AgentController {
 
     @PostMapping("/upload")
     public void upload(@RequestParam MultipartFile[] files) {
-        orchestrator.store(
+        contextEngine.addResource(
             (Resource[]) Arrays.stream(files).map(f -> {
                 try {
                     return new InputStreamResource(f.getInputStream());
@@ -53,6 +57,7 @@ class AgentController {
                     logger.error("File Read Exception.", e);
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Files can't be processed.");
                 }
-            }).toArray());
+            }).toArray()
+        );
     }
 }

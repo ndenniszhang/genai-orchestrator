@@ -20,7 +20,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class OrchestratorServiceCustomReActImplTest {
+class OrchestratorServiceCustomImplTest {
 
     @Mock
     private VectorStore vectorStore;
@@ -36,7 +36,7 @@ class OrchestratorServiceCustomReActImplTest {
     private STGroup stGroup = new STRawGroupDir("templates");
 
     @InjectMocks
-    private OrchestratorServiceCustomReActImpl orchestratorService;
+    private OrchestratorServiceCustomImpl orchestratorService;
 
     @BeforeEach
     void setUp() {

@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    // 1. Catch specific Spring-managed exceptions (like your existing ResponseStatusException)
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -26,18 +25,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, ex.getStatusCode());
     }
 
-    // 2. The "Catch-All": Intercepts any unexpected internal errors
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
-        // Log the actual error for your internal debugging
         logger.error("Internal Server Error: ", ex);
 
-        // Return a generic message to the client for security and consistency
         ErrorResponse error = new ErrorResponse(
                 "An unexpected error occurred. Please try again later.",
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value()
         );
+
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

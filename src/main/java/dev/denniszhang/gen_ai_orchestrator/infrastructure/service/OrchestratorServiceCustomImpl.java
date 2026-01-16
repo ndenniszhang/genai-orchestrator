@@ -1,10 +1,10 @@
 package dev.denniszhang.gen_ai_orchestrator.infrastructure.service;
 
+import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
 import dev.denniszhang.gen_ai_orchestrator.core.service.MessageFactory;
 import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -12,88 +12,67 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.document.Document;
 import org.springframework.ai.model.tool.DefaultToolCallingManager;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
-import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @Profile("custom")
-public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
+public class OrchestratorServiceCustomImpl implements OrchestratorService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    private final MessageFactory messageFactory;
     private final ToolCallbackProvider toolProvider;
     private final ChatModel chatModel;
-    private final ChatMemory chatMemory;
-    private final MessageFactory messageFactory;
-    private final VectorStore vectorStore;
+    private final ContextEngine contextEngine;
 
-    public OrchestratorServiceCustomReActImpl(
+    public OrchestratorServiceCustomImpl(
             ChatModel chatModel,
-            ChatMemory chatMemory,
-            ToolCallbackProvider toolProvider,
+            ContextEngine contextEngine,
             MessageFactory messageFactory,
-            VectorStore vectorStore
+            ToolCallbackProvider toolProvider
     ) {
         this.chatModel = chatModel;
-        this.chatMemory = chatMemory;
-        this.vectorStore = vectorStore;
         this.toolProvider = toolProvider;
+        this.contextEngine = contextEngine;
         this.messageFactory = messageFactory;
     }
 
     @Override
     public AssistantMessage chat(String conversationId, String message) {
-        if(chatMemory.get(conversationId).isEmpty()) {
-            chatMemory.add(conversationId, messageFactory.createSystem());
-        }
-        chatMemory.add(conversationId, messageFactory.createUser(message, getKnowledge(message)));
+        contextEngine.appendUserMessage(conversationId, message);
+        var promptWithHistory = contextEngine.getPrompt(conversationId, getChatOptions(false));
 
-        var promptWithHistory = new Prompt(chatMemory.get(conversationId), getChatOptions(true));
         var assistantMessage = chatModel.call(promptWithHistory).getResult().getOutput();
-        chatMemory.add(conversationId, assistantMessage);
 
+        contextEngine.appendMessage(conversationId, assistantMessage);
         return assistantMessage;
     }
 
     @Override
     public Flux<Message> stream(String conversationId, String message) {
-        if(chatMemory.get(conversationId).isEmpty()) {
-            chatMemory.add(conversationId, messageFactory.createSystem());
-        }
-        chatMemory.add(conversationId, messageFactory.createUser(message, getKnowledge(message)));
-
-        return recursiveStreamLoop(0, conversationId, chatMemory, DefaultToolCallingManager.builder().build());
+        contextEngine.appendUserMessage(conversationId, message);
+        return recursiveStreamLoop(0, conversationId, contextEngine, DefaultToolCallingManager.builder().build());
     }
 
-    private Flux<Message> recursiveStreamLoop(int iteration, String conversationId, ChatMemory chatMemory, ToolCallingManager toolCallingManager) {
+    private Flux<Message> recursiveStreamLoop(int iteration, String conversationId, ContextEngine contextEngine, ToolCallingManager toolCallingManager) {
         if(iteration == 10) {
-            final String answer = "Can't generate answer";
-            chatMemory.add(conversationId, AssistantMessage.builder()
-                                            .content(answer)
-                                            .build());
-            return Flux.just(AssistantMessage.builder()
-                    .content(answer)
-                    .build());
+            var assistantMessage = messageFactory.createAssistant("Can't generate answer");
+            contextEngine.appendMessage(conversationId, assistantMessage);
+            return Flux.just(assistantMessage);
         }
 
-        Prompt promptWithMemory = new Prompt(chatMemory.get(conversationId), getChatOptions(false));
+        Prompt promptWithMemory = contextEngine.getPrompt(conversationId, getChatOptions(false));
         Flux<ChatResponse> source = chatModel.stream(promptWithMemory).share();
 
         Mono <ChatResponse> aggregatedResponse = source.collectList()
@@ -106,19 +85,19 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                     .flatMapMany(response -> {
                         var generations = response.getResults();
                         var message = generations.getFirst().getOutput();
-                        chatMemory.add(conversationId, message);
+                        contextEngine.appendMessage(conversationId, message);
 
                         if(message.hasToolCalls()) {
                             var toolExecutionResult = toolCallingManager.executeToolCalls(promptWithMemory, response);
                             var toolMessage = toolExecutionResult.conversationHistory().getLast(); // ToolResponseMessage.builder().build();
-                            chatMemory.add(conversationId, toolMessage);
+                            contextEngine.appendMessage(conversationId, toolMessage);
 
                             return Flux.just(toolMessage)
                                     .doOnNext(m -> {
                                         m.getMetadata().remove("conversationId");
                                         m.getMetadata().remove("index");
                                     })
-                                    .concatWith(recursiveStreamLoop(iteration + 1, conversationId, chatMemory, toolCallingManager));
+                                    .concatWith(recursiveStreamLoop(iteration + 1, conversationId, contextEngine, toolCallingManager));
                         }
 
                         return Mono.just(message);
@@ -183,28 +162,5 @@ public class OrchestratorServiceCustomReActImpl implements OrchestratorService {
                     .generations(List.of(new Generation (aggregatedMessage)))
                     .metadata(lastMetadata)
                     .build();
-    }
-
-    private List<Document> getKnowledge(String message) {
-        return vectorStore.similaritySearch(
-                SearchRequest.builder()
-                .similarityThreshold(0.8d)
-                .topK(5)
-                .query(message)
-                .build());
-    }
-
-    public void store(Resource[] resources) {
-        if (resources.length != 0) {
-            Arrays.stream(resources)
-                    .map(resource -> new TokenTextSplitter(
-                            800,  // defaultChunkSize: Target ~800 tokens per chunk
-                            350,  // minChunkSizeChars: Avoid creating tiny, useless chunks
-                            5,    // minChunkLengthToEmbed: Discard artifacts/noise
-                            10000, // maxNumChunks: Safety limit
-                            true   // keepSeparator: Preserve sentence boundaries
-                    ).apply(new TikaDocumentReader(resource).get()))
-                    .forEach(docs -> vectorStore.add(docs));
-        }
     }
 }
