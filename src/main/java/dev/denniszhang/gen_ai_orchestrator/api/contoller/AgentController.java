@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -33,12 +32,6 @@ class AgentController {
     private AgentController(OrchestratorService orchestrator, ContextEngine contextEngine) {
         this.orchestrator = orchestrator;
         this.contextEngine = contextEngine;
-    }
-
-    @Operation(summary = "Synchronous Chat", description = "Sends a message to the agent and waits for the full response.")
-    @PostMapping("/chat")
-    public AssistantMessage chat(@RequestBody MessageDTO messageDTO) {
-        return orchestrator.chat(messageDTO.conversationId(), messageDTO.message());
     }
 
     @Operation(summary = "Streaming Chat", description = "Returns a Flux of messages as the agent reasons and executes tools.")

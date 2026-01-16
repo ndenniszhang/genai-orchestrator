@@ -4,8 +4,6 @@ import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
 import dev.denniszhang.gen_ai_orchestrator.core.service.MessageFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
@@ -33,15 +31,12 @@ public class ContextEngineImpl implements ContextEngine {
     }
 
     @Override
-    public Prompt getPrompt(String conversationID, ChatOptions chatOptions) {
-        return Prompt.builder()
-                .messages(chatMemory.get(conversationID))
-                .chatOptions(chatOptions)
-                .build();
+    public List<Message> getMessages(String conversationID) {
+        return chatMemory.get(conversationID);
     }
 
     @Override
-    public void appendUserMessage(String conversationId, String message) {
+    public void addUserMessage(String conversationId, String message) {
         if(chatMemory.get(conversationId).isEmpty()) {
             chatMemory.add(conversationId, messageFactory.createSystem());
         }
@@ -49,7 +44,7 @@ public class ContextEngineImpl implements ContextEngine {
     }
 
     @Override
-    public void appendMessage(String conversationId, Message message) {
+    public void addMessage(String conversationId, Message message) {
         chatMemory.add(conversationId, message);
     }
 

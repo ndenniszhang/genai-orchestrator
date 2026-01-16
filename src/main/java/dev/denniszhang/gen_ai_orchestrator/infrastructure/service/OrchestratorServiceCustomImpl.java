@@ -11,6 +11,7 @@ import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.DefaultToolCallingManager;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
@@ -49,30 +50,19 @@ public class OrchestratorServiceCustomImpl implements OrchestratorService {
     }
 
     @Override
-    public AssistantMessage chat(String conversationId, String message) {
-        contextEngine.appendUserMessage(conversationId, message);
-        var promptWithHistory = contextEngine.getPrompt(conversationId, getChatOptions(false));
-
-        var assistantMessage = chatModel.call(promptWithHistory).getResult().getOutput();
-
-        contextEngine.appendMessage(conversationId, assistantMessage);
-        return assistantMessage;
-    }
-
-    @Override
     public Flux<Message> stream(String conversationId, String message) {
-        contextEngine.appendUserMessage(conversationId, message);
+        contextEngine.addUserMessage(conversationId, message);
         return recursiveStreamLoop(0, conversationId, contextEngine, DefaultToolCallingManager.builder().build());
     }
 
     private Flux<Message> recursiveStreamLoop(int iteration, String conversationId, ContextEngine contextEngine, ToolCallingManager toolCallingManager) {
         if(iteration == 10) {
             var assistantMessage = messageFactory.createAssistant("Can't generate answer");
-            contextEngine.appendMessage(conversationId, assistantMessage);
+            contextEngine.addMessage(conversationId, assistantMessage);
             return Flux.just(assistantMessage);
         }
 
-        Prompt promptWithMemory = contextEngine.getPrompt(conversationId, getChatOptions(false));
+        Prompt promptWithMemory = getPrompt(conversationId, getChatOptions(false));
         Flux<ChatResponse> source = chatModel.stream(promptWithMemory).share();
 
         Mono <ChatResponse> aggregatedResponse = source.collectList()
@@ -85,12 +75,12 @@ public class OrchestratorServiceCustomImpl implements OrchestratorService {
                     .flatMapMany(response -> {
                         var generations = response.getResults();
                         var message = generations.getFirst().getOutput();
-                        contextEngine.appendMessage(conversationId, message);
+                        contextEngine.addMessage(conversationId, message);
 
                         if(message.hasToolCalls()) {
                             var toolExecutionResult = toolCallingManager.executeToolCalls(promptWithMemory, response);
                             var toolMessage = toolExecutionResult.conversationHistory().getLast(); // ToolResponseMessage.builder().build();
-                            contextEngine.appendMessage(conversationId, toolMessage);
+                            contextEngine.addMessage(conversationId, toolMessage);
 
                             return Flux.just(toolMessage)
                                     .doOnNext(m -> {
@@ -102,6 +92,13 @@ public class OrchestratorServiceCustomImpl implements OrchestratorService {
 
                         return Mono.just(message);
                     }));
+    }
+
+    private Prompt getPrompt(String conversationID, ChatOptions chatOptions){
+        return  Prompt.builder()
+                .messages(contextEngine.getMessages(conversationID))
+                .chatOptions(chatOptions)
+                .build();
     }
 
     private ToolCallingChatOptions getChatOptions(boolean toolExecution) {
