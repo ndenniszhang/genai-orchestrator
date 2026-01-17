@@ -21,10 +21,10 @@ public class MessageFactoryImpl implements MessageFactory {
     private final STGroup templateGroup = new STGroupFile("templates.stg");
 
     @Override
-    public SystemMessage createSystem() {
+    public SystemMessage createSystem(String name) {
         return SystemMessage.builder()
                 .text(templateGroup
-                    .getInstanceOf("systemPrompt")
+                    .getInstanceOf(name)
                     .render())
                 .build();
     }

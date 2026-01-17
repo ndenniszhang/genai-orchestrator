@@ -1,7 +1,7 @@
 package dev.denniszhang.gen_ai_orchestrator.api.contoller;
 
 import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
-import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
+import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorAgent;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ class AgentControllerTest {
     private MockMvc mockMvc;
 
     @Mock
-    private OrchestratorService orchestratorService;
+    private OrchestratorAgent orchestratorAgent;
 
     @Mock
     private ContextEngine contextEngine;
@@ -62,7 +62,7 @@ class AgentControllerTest {
         AssistantMessage mockMessage = AssistantMessage.builder()
                 .content("Streaming response")
                 .build();
-        Mockito.when(orchestratorService.stream(anyString(), anyString()))
+        Mockito.when(orchestratorAgent.stream(anyString(), anyString()))
                 .thenReturn(reactor.core.publisher.Flux.just(mockMessage));
 
         // Act & Assert

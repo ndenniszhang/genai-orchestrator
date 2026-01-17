@@ -8,7 +8,7 @@ import org.springframework.ai.document.Document;
 import java.util.List;
 
 public interface MessageFactory {
-    SystemMessage createSystem();
+    SystemMessage createSystem(String name);
     UserMessage createUser(String message, List<Document> documents);
     AssistantMessage createAssistant(String message);
 }

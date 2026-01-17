@@ -2,7 +2,7 @@ package dev.denniszhang.gen_ai_orchestrator.infrastructure.service;
 
 import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
 import dev.denniszhang.gen_ai_orchestrator.core.service.MessageFactory;
-import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
+import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Profile("custom")
-public class OrchestratorServiceCustomImpl implements OrchestratorService {
+public class OrchestratorAgentImpl implements OrchestratorAgent {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final MessageFactory messageFactory;
@@ -37,7 +37,7 @@ public class OrchestratorServiceCustomImpl implements OrchestratorService {
     private final ChatModel chatModel;
     private final ContextEngine contextEngine;
 
-    public OrchestratorServiceCustomImpl(
+    public OrchestratorAgentImpl(
             ChatModel chatModel,
             ContextEngine contextEngine,
             MessageFactory messageFactory,

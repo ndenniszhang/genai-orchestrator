@@ -58,7 +58,7 @@ class ContextEngineImplTest {
 
         SystemMessage sysMsg = SystemMessage.builder().text("system").build();
         UserMessage userMsg = UserMessage.builder().text("hello").build();
-        Mockito.when(messageFactory.createSystem()).thenReturn(sysMsg);
+        Mockito.when(messageFactory.createSystem("orchestratorAgent")).thenReturn(sysMsg);
         Mockito.when(messageFactory.createUser(eq("hello"), any())).thenReturn(userMsg);
         // getKnowledge returns empty list (vectorStore not used in this test)
         Mockito.when(vectorStore.similaritySearch((String) any())).thenReturn(Collections.<org.springframework.ai.document.Document>emptyList());

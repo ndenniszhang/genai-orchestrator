@@ -1,7 +1,7 @@
 package dev.denniszhang.gen_ai_orchestrator.api.contoller;
 
 import dev.denniszhang.gen_ai_orchestrator.core.service.ContextEngine;
-import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorService;
+import dev.denniszhang.gen_ai_orchestrator.core.service.OrchestratorAgent;
 import dev.denniszhang.gen_ai_orchestrator.infrastructure.model.MessageDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.util.Arrays;
 
-@Tag(name = "Agentic AI Orchestrator", description = "Endpoints for interacting with the ReAct-style AI agent")
+@Tag(name = "Agentic AI", description = "Endpoints for interacting with the Agentic AI")
 @CrossOrigin
 @RestController
 @RequestMapping("/api/v1/agent")
@@ -27,9 +27,9 @@ class AgentController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final ContextEngine contextEngine;
-    private final OrchestratorService orchestrator;
+    private final OrchestratorAgent orchestrator;
 
-    private AgentController(OrchestratorService orchestrator, ContextEngine contextEngine) {
+    private AgentController(OrchestratorAgent orchestrator, ContextEngine contextEngine) {
         this.orchestrator = orchestrator;
         this.contextEngine = contextEngine;
     }

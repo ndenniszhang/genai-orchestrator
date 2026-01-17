@@ -37,8 +37,10 @@ public class ContextEngineImpl implements ContextEngine {
 
     @Override
     public void addUserMessage(String conversationId, String message) {
+        final String AgentName = "orchestratorAgent";
+
         if(chatMemory.get(conversationId).isEmpty()) {
-            chatMemory.add(conversationId, messageFactory.createSystem());
+            chatMemory.add(conversationId, messageFactory.createSystem(AgentName));
         }
         chatMemory.add(conversationId, messageFactory.createUser(message, getKnowledge(message)));
     }

@@ -25,10 +25,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
 /**
- * Unit tests for {@link OrchestratorServiceCustomImpl}.
+ * Unit tests for {@link OrchestratorAgentImpl}.
  */
 @Disabled("Temporarily skipping while refactoring")
-class OrchestratorServiceCustomImplTest {
+class OrchestratorAgentImplTest {
 
     @Test
     @DisplayName("stream() should stop after iteration limit and return fallback message")
@@ -61,7 +61,7 @@ class OrchestratorServiceCustomImplTest {
         Mockito.when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[0]);
 
 
-        OrchestratorServiceCustomImpl service = new OrchestratorServiceCustomImpl(
+        OrchestratorAgentImpl service = new OrchestratorAgentImpl(
                 chatModel,
                 contextEngine,
                 messageFactory,
